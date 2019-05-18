@@ -43,11 +43,17 @@ class Runner(object):
         mb_actions = torch.stack(mb_actions).transpose(1, 0)
         mb_rewards = torch.tensor(mb_rewards, dtype=torch.float32).transpose(1, 0)
         mb_values = torch.stack(mb_values).transpose(1, 0)
-
         mb_dones = np.asarray(mb_dones, dtype=np.bool).swapaxes(1, 0)
+
+        for e in range(len(mb_dones)):
+            for j in range(self.n_step):
+                if not mb_dones[e][j]:
+                    break
+                if j == (self.n_step - 1):
+                    print('---------------------------Problem-------------------------')
+
         mb_masks = mb_dones[:, :-1]
         mb_dones = mb_dones[:, 1:]
-
         if self.gamma > 0:
             with torch.no_grad():
                 last_values = self.policy.value(self.obs).tolist()
@@ -59,7 +65,6 @@ class Runner(object):
                     rewards = discount_reward(rewards + [value], dones + [0], self.gamma)[:-1]
                 else:
                     rewards = discount_reward(rewards, dones, self.gamma)
-                print(rewards)
                 mb_rewards[n] = torch.tensor(rewards)
 
         mb_obs = mb_obs.contiguous().view(self.mb_obs_shape).to(device)
