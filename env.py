@@ -230,26 +230,27 @@ class FrameStack(gym.Wrapper):
 
 
 class ToTensor(gym.ObservationWrapper):
+    '''
     def __init__(self, env):
         super().__init__(env)
         shp = env.observation_space.shape
         self.observation_space = gym.spaces.Box(low=0, high=255, shape=((1,) + shp), dtype=env.observation_space.dtype)
-
+    '''
     def observation(self, observation):
-        return torch.from_numpy(observation).unsqueeze(0).to(torch.device('cuda' if torch.cuda.is_available() else 'cpu'))
+        return torch.from_numpy(observation).to(torch.device('cuda' if torch.cuda.is_available() else 'cpu'))
 
 
 def make_atari_env(env_id):
     env = gym.make(env_id)
-    env = EpisodicLifeEnv(env)
-    env = FireResetEnv(env)
     env = NoopResetEnv(env)
+    env = EpisodicLifeEnv(env)
+    if 'FIRE' in env.unwrapped.get_action_meanings():
+        env = FireResetEnv(env)
     # env = MaxAndSkipEnv(env) It is already applied by gym environment
     env = WarpFrame(env)
     env = ScaledFloatFrame(env)
     env = ClipRewardEnv(env)
     env = FrameStack(env, 4)
-    env = ToTensor(env)
     return env
 
 

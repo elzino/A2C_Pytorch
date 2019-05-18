@@ -47,12 +47,12 @@ class Policy(nn.Module):
         x = self._conv_forward(x)
         action_prob = F.softmax(self.score(x), dim=1)
         value = self.value_linear(x)
-        return action_prob, value
+        return action_prob, value.squeeze(1)
 
     def value(self, x):
         x = self._conv_forward(x)
         value = self.value_linear(x)
-        return value
+        return value.squeeze(1)
 
 
 def choose_action(action_prob):
