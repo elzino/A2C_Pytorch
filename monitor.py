@@ -90,7 +90,6 @@ class VecMonitor(VecEnvWrapper):
         self.eplens += 1
         for i in range(len(dones)):
             if dones[i]:
-                print(self.eprets[i])  # 나중에 지우기
                 epinfo = {"r": round(self.eprets[i], 6), "l": self.eplens[i], "t": round(time.time() - self.tstart, 6)}
                 self.epcount += 1
                 self.eprets[i] = 0

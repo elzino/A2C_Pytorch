@@ -54,6 +54,7 @@ class FireResetEnv(gym.Wrapper):
     def reset(self, **kwargs):
         self.env.reset(**kwargs)
         obs, _, done, _ = self.env.step(1)
+        obs, _, done, _ = self.env.step(1)
         return obs
 
     def step(self, ac):

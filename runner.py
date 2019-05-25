@@ -45,13 +45,6 @@ class Runner(object):
         mb_values = torch.stack(mb_values).transpose(1, 0)
         mb_dones = np.asarray(mb_dones, dtype=np.bool).swapaxes(1, 0)
 
-        for e in range(len(mb_dones)):
-            for j in range(self.n_step):
-                if not mb_dones[e][j]:
-                    break
-                if j == (self.n_step - 1):
-                    print('---------------------------Problem-------------------------')
-
         mb_masks = mb_dones[:, :-1]
         mb_dones = mb_dones[:, 1:]
         if self.gamma > 0:
