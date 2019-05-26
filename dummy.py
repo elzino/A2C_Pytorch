@@ -11,6 +11,7 @@ from monitor import VecMonitor
 from vecenv.vev_env import make_env, VecToTensor
 from vecenv.dummy_vec_env import DummyVecEnv
 from vecenv.subproc_vec_env import SubprocVecEnv
+from vecenv.shmem_vec_env import ShmemVecEnv
 
 if __name__ == '__main__':
     #args
@@ -29,7 +30,8 @@ if __name__ == '__main__':
     env_id = 'Breakout-v0'
     envs = [make_env(env_id) for _ in range(n_env)]
 #    envs = DummyVecEnv(envs)
-    envs = SubprocVecEnv(envs)
+#    envs = SubprocVecEnv(envs)
+    envs = ShmemVecEnv(envs)
     envs = VecToTensor(envs)
     mon_file ="./tmp/" + datetime.now().strftime('%m_%d_%H_%M')
     envs = VecMonitor(envs, mon_file)
