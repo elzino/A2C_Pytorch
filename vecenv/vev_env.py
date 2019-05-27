@@ -4,7 +4,8 @@ from abc import ABC, abstractmethod
 import torch
 
 from utils import tile_images
-from env import make_atari_env
+from env import make_atari_env, make_cartpole_env
+
 
 class AlreadySteppingError(Exception):
     """

@@ -241,6 +241,32 @@ class ToTensor(gym.ObservationWrapper):
         return torch.from_numpy(observation).to(torch.device('cuda' if torch.cuda.is_available() else 'cpu'))
 
 
+class CartpoleObs(gym.Wrapper):
+    def __init__(self, env):
+        super().__init__(env)
+        env.reset()
+        screen = env.render(mode='rgb_array')
+        screen_height, screen_width, screen_channel = screen.shape
+        self.observation_space = gym.spaces.Box(
+            low=0,
+            high=255,
+            shape=(screen_height, screen_width, screen_channel),
+            dtype=np.uint8,
+        )
+
+    def reset(self, **kwargs):
+        self.env.reset()
+        return self._get_ob()
+
+    def step(self, action):
+        action = int(action)
+        ob, reward, done, info = self.env.step(action)
+        return self._get_ob(), reward, done, info
+
+    def _get_ob(self):
+        return self.env.render(mode='rgb_array')
+
+
 def make_atari_env(env_id):
     env = gym.make(env_id)
     env = NoopResetEnv(env)
@@ -251,6 +277,15 @@ def make_atari_env(env_id):
     env = WarpFrame(env)
     env = ScaledFloatFrame(env)
     env = ClipRewardEnv(env)
+    env = FrameStack(env, 4)
+    return env
+
+
+def make_cartpole_env():
+    env = gym.make('CartPole-v1')
+    env = CartpoleObs(env)
+    env = WarpFrame(env)
+    env = ScaledFloatFrame(env)
     env = FrameStack(env, 4)
     return env
 
