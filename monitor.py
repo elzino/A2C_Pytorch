@@ -98,13 +98,11 @@ class VecMonitor(VecEnvWrapper):
                     self.result_writer.write_row(epinfo)
         return obs, rews, dones, infos
 
-    # close 구현?
-
 
 class ResultWriter(object):
     def __init__(self, filename, header=''):
         assert filename is not None
-        # 나중에 밑에 라인 지워 버리기, 별로 필요 없음
+        # TODO remove below lines. It is useless.
         if not filename.endswith(Monitor.EXT):
             if osp.isdir(filename):
                 filename = osp.join(filename, Monitor.EXT)

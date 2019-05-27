@@ -47,9 +47,8 @@ if __name__ == '__main__':
             obs_i, reward_i, value_i, action_prob_i, action_i = rollout[i]
             R += reward_i  # * gamma
             advantage_i = R - value_i.detach()
-            policy_loss = - action_prob_i[[0], action[0]] * advantage_i # log도 안 취함
+            policy_loss = - action_prob_i[[0], action[0]] * advantage_i # have to change this to use log
             value_loss = F.mse_loss(R, value_i)
-            #TODO batch로 바꿀때 reduction sum이 아니라 average로 다시 생각, 폴리시 에버리지 안했으면 밸류도
 
             loss += (policy_loss + value_loss)
 #            for param in policy.parameters():

@@ -115,6 +115,7 @@ def _subproc_worker(pipe, parent_pipe, env_fn_wrapper, obs_buf, obs_shape, obs_d
         print('ShmemVecEnv worker: got KeyboardInterrupt')
     finally:
         env.close()
+        pipe.close()
 
 
 

@@ -23,7 +23,7 @@ if __name__ == '__main__':
     vf_coef = 0.5
     max_grad_norm = 0.5
 
-    lr = 0.0007
+    lr = 0.001
     alpha = 0.99
     epsilon = 1e-05
 
@@ -45,7 +45,7 @@ if __name__ == '__main__':
 
     optimizer = optim.RMSprop(train_policy.parameters(), lr=lr, alpha=alpha, eps=epsilon)
 
-    for i in tqdm(range(1000)):
+    for i in tqdm(range(100)):
         mb_obs, mb_rewards, mb_values, mb_actions = runner.run()
 
         action_probs, values = train_policy(mb_obs)

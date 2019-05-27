@@ -7,6 +7,7 @@ from agent import *
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+
 class Runner(object):
     def __init__(self, envs, policy, n_step, gamma):
         self.envs = envs
@@ -52,7 +53,7 @@ class Runner(object):
                 last_values = self.policy.value(self.obs).tolist()
             for n, (rewards, dones, value) in enumerate(zip(mb_rewards, mb_dones, last_values)):
                 rewards = rewards.tolist()        # Without this code, the below array addition performs differently
-                dones = dones.tolist()            # 이걸 안하면 밑에서 array 더하는거 연산이 다르게 됨
+                dones = dones.tolist()
 
                 if dones[-1] == 0:
                     rewards = discount_reward(rewards + [value], dones + [0], self.gamma)[:-1]
