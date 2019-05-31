@@ -24,9 +24,9 @@ class Runner(object):
         mb_obs, mb_rewards, mb_actions, mb_values, mb_dones = [], [], [], [], []
         for _ in range(self.n_step):
             with torch.no_grad():
-                action_probs, values = self.policy.forward(self.obs)
-                actions = choose_action(action_probs)
-            next_obs, rewards, dones, info = self.envs.step(actions.cpu())
+                action_logits, values = self.policy.forward(self.obs)
+                actions = choose_action(action_logits)
+            next_obs, rewards, dones, info = self.envs.step(actions)
             self.envs.render()
 
             mb_obs.append(self.obs)
@@ -42,29 +42,29 @@ class Runner(object):
 
         mb_obs = torch.stack(mb_obs).transpose(1, 0)
         mb_actions = torch.stack(mb_actions).transpose(1, 0)
-        mb_rewards = torch.tensor(mb_rewards, dtype=torch.float32).transpose(1, 0)
         mb_values = torch.stack(mb_values).transpose(1, 0)
+
+        mb_rewards = np.asarray(mb_rewards, dtype=np.float32).swapaxes(1, 0)
         mb_dones = np.asarray(mb_dones, dtype=np.bool).swapaxes(1, 0)
 
         mb_masks = mb_dones[:, :-1]
         mb_dones = mb_dones[:, 1:]
+
         if self.gamma > 0:
             with torch.no_grad():
-                last_values = self.policy.value(self.obs).tolist()
+                last_values = self.policy.value(self.obs)
             for n, (rewards, dones, value) in enumerate(zip(mb_rewards, mb_dones, last_values)):
-                rewards = rewards.tolist()        # Without this code, the below array addition performs differently
-                dones = dones.tolist()
 
                 if dones[-1] == 0:
-                    rewards = discount_reward(rewards + [value], dones + [0], self.gamma)[:-1]
+                    rewards = discount_reward(np.append(rewards, value), np.append(dones, 0), self.gamma)[:-1]
                 else:
                     rewards = discount_reward(rewards, dones, self.gamma)
-                mb_rewards[n] = torch.tensor(rewards)
+                mb_rewards[n] = rewards
 
-        mb_obs = mb_obs.contiguous().view(self.mb_obs_shape).to(device)
-        mb_rewards = mb_rewards.flatten().to(device)
-        mb_values = mb_values.flatten().to(device)
-        mb_actions = mb_actions.flatten().to(device)
+        mb_obs = mb_obs.contiguous().view(self.mb_obs_shape)
+        mb_values = mb_values.flatten()
+        mb_actions = mb_actions.flatten()
+        mb_rewards = torch.from_numpy(mb_rewards).to(device).flatten()
         return mb_obs, mb_rewards, mb_values, mb_actions
 
 

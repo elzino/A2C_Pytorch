@@ -1,6 +1,9 @@
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
+import torch.nn as nn
+from torch.distributions import Categorical
+
 from datetime import datetime
 from tqdm import tqdm
 
@@ -48,24 +51,27 @@ if __name__ == '__main__':
     for i in tqdm(range(100)):
         mb_obs, mb_rewards, mb_values, mb_actions = runner.run()
 
-        action_probs, values = train_policy(mb_obs)
+        action_logits, values = train_policy(mb_obs)
 
         mb_adv = mb_rewards - mb_values
-        neglogpac = - action_probs[np.arange(len(mb_actions)), mb_actions].log()
-        pg_loss = torch.mean(neglogpac * mb_adv)
+        dist = Categorical(logits=action_logits)
+        action_log_probs = dist.log_prob(mb_actions)
+        pg_loss = torch.mean(-action_log_probs * mb_adv)
 
         vf_loss = F.mse_loss(values, mb_rewards)
 
-        entropy = torch.mean(Categorical(action_probs).entropy())
+        entropy = torch.mean(dist.entropy())
 
         loss = pg_loss - entropy * ent_coef + vf_loss * vf_coef
 
         optimizer.zero_grad()
         loss.backward()
 
-        for name, param in train_policy.named_parameters():
-            if param.grad is not None:
-                param.grad.data.clamp_(-max_grad_norm, max_grad_norm)
+        nn.utils.clip_grad_norm_(train_policy.parameters(), max_grad_norm)
+
+#        for name, param in train_policy.named_parameters():
+#            if param.grad is not None:
+#                param.grad.data.clamp_(-max_grad_norm, max_grad_norm)
 
         optimizer.step()
         step_policy.load_state_dict(train_policy.state_dict())
