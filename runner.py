@@ -27,7 +27,6 @@ class Runner(object):
                 action_logits, values = self.policy.forward(self.obs)
                 actions = choose_action(action_logits)
             next_obs, rewards, dones, info = self.envs.step(actions)
-            self.envs.render()
 
             mb_obs.append(self.obs)
             mb_dones.append(self.dones)
@@ -52,7 +51,7 @@ class Runner(object):
 
         if self.gamma > 0:
             with torch.no_grad():
-                last_values = self.policy.value(self.obs)
+                last_values = self.policy.value(self.obs).cpu()
             for n, (rewards, dones, value) in enumerate(zip(mb_rewards, mb_dones, last_values)):
 
                 if dones[-1] == 0:
