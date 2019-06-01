@@ -6,6 +6,7 @@ from torch.distributions import Categorical
 
 from datetime import datetime
 from tqdm import tqdm
+import time
 
 from env import *
 from agent import *
@@ -49,8 +50,11 @@ if __name__ == '__main__':
     optimizer = optim.RMSprop(train_policy.parameters(), lr=lr, alpha=alpha, eps=epsilon)
 
     for i in tqdm(range(100)):
+        runner_start = time.time()
         mb_obs, mb_rewards, mb_values, mb_actions = runner.run()
+        print('***** total runner time {}'.format(time.time() - runner_start))
 
+        loss_start = time.time()
         action_logits, values = train_policy(mb_obs)
 
         mb_adv = mb_rewards - mb_values
@@ -63,7 +67,9 @@ if __name__ == '__main__':
         entropy = torch.mean(dist.entropy())
 
         loss = pg_loss - entropy * ent_coef + vf_loss * vf_coef
+        print('***** build loss time {}'.format(time.time() - loss_start))
 
+        backward_start = time.time()
         optimizer.zero_grad()
         loss.backward()
 
@@ -75,4 +81,5 @@ if __name__ == '__main__':
 
         optimizer.step()
         step_policy.load_state_dict(train_policy.state_dict())
+        print('***** backward time {}'.format(time.time() - backward_start))
 

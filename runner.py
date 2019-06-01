@@ -74,3 +74,12 @@ def discount_reward(rewards, dones, gamma):
         R = r + gamma * R * (1. - done)
         discounted.append(R)
     return discounted[::-1]
+
+
+def batch_discount_reward(last_values, rewards, dones, gamma):
+    discounted = np.zeros(rewards.shape)
+    R = last_values
+    for n in reversed(range(rewards.shape[1])):
+        R = rewards[:, n] + gamma * R * (1. - dones[:, n])
+        discounted[:, n] = R
+    return discounted
