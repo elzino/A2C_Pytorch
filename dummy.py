@@ -25,6 +25,8 @@ if __name__ == '__main__':
     ent_coef = 0.01
     vf_coef = 0.5
     max_grad_norm = 0.5
+    save_model_per_epoch = 10
+    num_updates = 100
 
     lr = 0.001
     alpha = 0.99
@@ -36,8 +38,10 @@ if __name__ == '__main__':
 #    envs = SubprocVecEnv(envs)
     envs = ShmemVecEnv(envs)
     envs = VecToTensor(envs)
-    mon_file ="./tmp/" + datetime.now().strftime('%m_%d_%H_%M')
-    envs = VecMonitor(envs, mon_file)
+
+    date = datetime.now().strftime('%m_%d_%H_%M')
+    mon_file_name ="./tmp/" + date
+    envs = VecMonitor(envs, mon_file_name)
 
     train_policy = Policy(84, 84, 4, envs.action_space.n).to(device)
     step_policy = Policy(84, 84, 4, envs.action_space.n).to(device)
@@ -48,7 +52,7 @@ if __name__ == '__main__':
 
     optimizer = optim.RMSprop(train_policy.parameters(), lr=lr, alpha=alpha, eps=epsilon)
 
-    for i in tqdm(range(100)):
+    for i in tqdm(range(num_updates)):
         mb_obs, mb_rewards, mb_values, mb_actions = runner.run()
 
         action_logits, values = train_policy(mb_obs)
@@ -75,4 +79,7 @@ if __name__ == '__main__':
 
         optimizer.step()
         step_policy.load_state_dict(train_policy.state_dict())
+
+        if i % save_model_per_epoch == 0 or i == (num_updates - 1):
+            torch.save(train_policy.state_dict(), './models/{}_at_{}.pt'.format(date, i))
 
