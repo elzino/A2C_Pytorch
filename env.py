@@ -278,6 +278,7 @@ def make_atari_env(env_id):
     env = ScaledFloatFrame(env)
     env = ClipRewardEnv(env)
     env = FrameStack(env, 4)
+    env = ToTensor(env)
     return env
 
 
