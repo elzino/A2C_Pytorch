@@ -2,7 +2,6 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
-import time
 from env import *
 from agent import *
 
@@ -23,7 +22,6 @@ class Runner(object):
 
     def run(self):
         mb_obs, mb_rewards, mb_actions, mb_values, mb_dones = [], [], [], [], []
-        start = time.time()
         for _ in range(self.n_step):
             with torch.no_grad():
                 action_logits, values = self.policy.forward(self.obs)
@@ -39,10 +37,6 @@ class Runner(object):
             self.obs = next_obs
             self.dones = dones
 
-        print('***** total loop time {}'.format(time.time() - start))
-
-        start = time.time()
-
         mb_dones.append(self.dones)
 
         mb_obs = torch.stack(mb_obs).transpose(1, 0)
@@ -55,10 +49,6 @@ class Runner(object):
         mb_masks = mb_dones[:, :-1]
         mb_dones = mb_dones[:, 1:]
 
-        print('***** torch or numpy time {}'.format(time.time() - start))
-
-        start = time.time()
-
         if self.gamma > 0:
             with torch.no_grad():
                 last_values = self.policy.value(self.obs).cpu()
@@ -70,15 +60,10 @@ class Runner(object):
                     rewards = discount_reward(rewards, dones, self.gamma)
                 mb_rewards[n] = rewards
 
-        print('***** discount reward time {}'.format(time.time() - start))
-
-        start = time.time()
-
         mb_obs = mb_obs.contiguous().view(self.mb_obs_shape)
         mb_values = mb_values.flatten()
         mb_actions = mb_actions.flatten()
         mb_rewards = torch.from_numpy(mb_rewards).to(device).flatten()
-        print('***** last flatten time {}'.format(time.time() - start))
         return mb_obs, mb_rewards, mb_values, mb_actions
 
 
