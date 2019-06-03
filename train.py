@@ -1,73 +1,84 @@
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
-from env import *
-from agent import *
+import torch.nn as nn
+from torch.distributions import Categorical
 
+from datetime import datetime
+from tqdm import tqdm
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+from agent import Policy
+from runner import Runner
+from monitor import VecMonitor
+from vecenv.vev_env import make_env, VecToTensor
+from vecenv.dummy_vec_env import DummyVecEnv
+from vecenv.subproc_vec_env import SubprocVecEnv
+from vecenv.shmem_vec_env import ShmemVecEnv
 
 if __name__ == '__main__':
     #args
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    n_env = 2
     n_step = 5
+    gamma = 0.99
+    ent_coef = 0.01
+    vf_coef = 0.5
+    max_grad_norm = 0.5
+    save_model_per_epoch = 10
+    num_updates = 100
 
-    env = make_atari_env('BeamRider-v0')
-    obs = env.reset()
+    lr = 0.001
+    alpha = 0.99
+    epsilon = 1e-05
 
-    policy = Policy(84, 84, 4, env.action_space.n)
-    policy.eval()
+    env_id = 'Breakout-v0'
+    envs = [make_env(env_id) for _ in range(n_env)]
+#    envs = DummyVecEnv(envs)
+#    envs = SubprocVecEnv(envs)
+    envs = ShmemVecEnv(envs)
+    envs = VecToTensor(envs)
 
-    optimizer = optim.Adam(policy.parameters())
+    date = datetime.now().strftime('%m_%d_%H_%M')
+    mon_file_name ="./tmp/" + date
+    envs = VecMonitor(envs, mon_file_name)
 
-    for i in range(40):
-        R = 0
-        rollout = []
+    train_policy = Policy(84, 84, 4, envs.action_space.n).to(device)
+    step_policy = Policy(84, 84, 4, envs.action_space.n).to(device)
+    step_policy.load_state_dict(train_policy.state_dict())
+    step_policy.eval()
+
+    runner = Runner(envs, step_policy, n_step, gamma)
+
+    optimizer = optim.RMSprop(train_policy.parameters(), lr=lr, alpha=alpha, eps=epsilon)
+
+    for i in tqdm(range(num_updates)):
+        mb_obs, mb_rewards, mb_values, mb_actions = runner.run()
+
+        action_logits, values = train_policy(mb_obs)
+
+        mb_adv = mb_rewards - mb_values
+        dist = Categorical(logits=action_logits)
+        action_log_probs = dist.log_prob(mb_actions)
+        pg_loss = torch.mean(-action_log_probs * mb_adv)
+
+        vf_loss = F.mse_loss(values, mb_rewards)
+
+        entropy = torch.mean(dist.entropy())
+
+        loss = pg_loss - entropy * ent_coef + vf_loss * vf_coef
+
         optimizer.zero_grad()
-
-        for i in range(n_step):
-            action_prob, value = policy.forward(obs)
-            action = choose_action(action_prob)
-            print(action)
-            print(action_prob)
-            next_obs, reward, done, info = env.step(action)
-
-            rollout.append((obs, reward, value, action_prob, action))
-            obs = next_obs
-
-            if done:
-                break
-
-        if done:
-            R = 0
-        else:
-            _, _, R = policy.forward(obs)
-
-        loss = 0
-        for i in reversed(range(len(rollout))):
-            obs_i, reward_i, value_i, action_prob_i, action_i = rollout[i]
-            R += reward_i  # * gamma
-            advantage_i = R - value_i.detach()
-            policy_loss = - action_prob_i[[0], action[0]] * advantage_i # have to change this to use log
-            value_loss = F.mse_loss(R, value_i)
-
-            loss += (policy_loss + value_loss)
-#            for param in policy.parameters():
-#                param.grad.data.clamp_(-1, 1)
         loss.backward()
 
-        # optimizer.step()
+        nn.utils.clip_grad_norm_(train_policy.parameters(), max_grad_norm)
 
+#        for name, param in train_policy.named_parameters():
+#            if param.grad is not None:
+#                param.grad.data.clamp_(-max_grad_norm, max_grad_norm)
 
+        optimizer.step()
+        step_policy.load_state_dict(train_policy.state_dict())
 
-'''
-    for i in range(1000):
-        action_prob, value = policy.forward(obs)
-        action = choose_action(action_prob)
-        obs, reward, done, info = env.step(action)
-        print(action)
-        env.render()
-        if done:
-            print('------------------------------------------------------')
-            env.reset()
+        if i % save_model_per_epoch == 0 or i == (num_updates - 1):
+            torch.save(train_policy.state_dict(), './models/{}_at_{}.pt'.format(date, i))
 
-'''
