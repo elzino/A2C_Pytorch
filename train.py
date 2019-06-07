@@ -19,17 +19,17 @@ if __name__ == '__main__':
     #args
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     n_env = 12
-    n_step = 20
+    n_step = 50
     gamma = 0.99
     ent_coef = 0.01
     vf_coef = 0.5
     max_grad_norm = 0.5
     save_model_per_epoch = 1000
-    num_updates = 200000
+    num_updates = 100000
 
-    lr = 0.0005
-#    alpha = 0.99
-#    epsilon = 1e-05
+    lr = 0.001
+    alpha = 0.99
+    epsilon = 1e-05
 
     env_id = 'Breakout-v0'
     envs = [make_env(env_id) for _ in range(n_env)]
@@ -49,8 +49,7 @@ if __name__ == '__main__':
 
     runner = Runner(envs, step_policy, n_step, gamma)
 
-    optimizer = optim.Adam(train_policy.parameters(), lr=lr)
-    scheduler = optim.lr_scheduler.StepLR(optimizer, int(num_updates/10), gamma=0.5)
+    optimizer = optim.RMSprop(train_policy.parameters(), lr=lr, alpha=alpha, eps=epsilon)
 
     for i in tqdm(range(num_updates)):
         mb_obs, mb_rewards, mb_values, mb_actions = runner.run()
@@ -77,7 +76,7 @@ if __name__ == '__main__':
 #            if param.grad is not None:
 #                param.grad.data.clamp_(-max_grad_norm, max_grad_norm)
 
-        scheduler.step()
+        optimizer.step()
         step_policy.load_state_dict(train_policy.state_dict())
 
         if i % save_model_per_epoch == 0 or i == (num_updates - 1):
